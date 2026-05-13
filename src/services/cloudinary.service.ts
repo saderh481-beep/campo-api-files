@@ -98,7 +98,10 @@ export class CloudinaryService {
         upload_preset: PRESETS[options.preset],
         folder: options.folder,
         tags: options.tags,
-        resource_type: options.resourceType || 'image'
+        context: options.context,
+        resource_type: options.resourceType || 'image',
+        use_filename: true,
+        unique_filename: true
       };
 
       if (Object.keys(transformation).length > 0) {
