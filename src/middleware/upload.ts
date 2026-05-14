@@ -36,6 +36,25 @@ export const parseMultipart = async (c: Context, next: Next) => {
           size: buffer.length,
           fieldname: key
         });
+      } else if (Array.isArray(value) && value[0] instanceof File) {
+        for (const file of value) {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          
+          if (buffer.length > MAX_FILE_SIZE) {
+            throw new HTTPException(413, { 
+              message: `Archivo ${file.name} excede el límite de 10MB` 
+            });
+          }
+
+          files.push({
+            buffer,
+            filename: file.name,
+            mimetype: file.type,
+            size: buffer.length,
+            fieldname: key
+          });
+        }
       } else if (typeof value === 'string') {
         fields[key] = value;
       }
