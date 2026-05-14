@@ -6,6 +6,33 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 const ALLOWED_DOC_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
+const IMAGE_MAGIC_BYTES: Record<string, [number, Uint8Array][]> = {
+  'image/jpeg': [[0, new Uint8Array([0xFF, 0xD8, 0xFF])]],
+  'image/png':  [[0, new Uint8Array([0x89, 0x50, 0x4E, 0x47])]],
+  'image/webp': [[0, new Uint8Array([0x52, 0x49, 0x46, 0x46])]],
+  'image/heic': [[4, new Uint8Array([0x66, 0x74, 0x79, 0x70])]],
+};
+
+function validateImageBuffer(buffer: Buffer, mimetype: string): void {
+  if (buffer.length === 0) {
+    throw new HTTPException(400, { message: 'Archivo vacío' });
+  }
+
+  const signatures = IMAGE_MAGIC_BYTES[mimetype];
+  if (!signatures) return;
+
+  for (const [offset, magic] of signatures) {
+    if (buffer.length < offset + magic.length) {
+      throw new HTTPException(400, { message: 'Archivo de imagen corrupto o incompleto' });
+    }
+    for (let i = 0; i < magic.length; i++) {
+      if (buffer[offset + i] !== magic[i]) {
+        throw new HTTPException(400, { message: 'Archivo de imagen corrupto o inválido' });
+      }
+    }
+  }
+}
+
 export const parseMultipart = async (c: Context, next: Next) => {
   const contentType = c.req.header('content-type') || '';
   
@@ -78,6 +105,7 @@ export const validateImage = (c: Context, next: Next) => {
         message: `Tipo no permitido: ${file.mimetype}` 
       });
     }
+    validateImageBuffer(file.buffer as Buffer, file.mimetype);
   }
   
   return next();

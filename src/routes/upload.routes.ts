@@ -31,41 +31,41 @@ router.post('/fotos-campo',
       throw new HTTPException(400, { message: `Máximo ${maxFiles} fotos permitidas` });
     }
 
-    const results = await Promise.all(
-      files.map(async (file, index) => {
-        const result = await cloudinaryService.uploadOptimized(
-          file.buffer,
-          file.filename,
-          {
-            preset: 'IMAGES',
-            folder: `bitacoras/${bitacoraId}`,
-            tags: ['bitacora', `tecnico_${tecnicoId}`, `bitacora_${bitacoraId}`],
-            context: {
-              bitacora_id: bitacoraId,
-              tecnico_id: tecnicoId,
-              subido_por: auth.clientType,
-              orden: String(index + 1)
-            },
-            maxWidth: 1920,
-            maxHeight: 1080
-          }
-        );
+    const results = [];
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+      const result = await cloudinaryService.uploadOptimized(
+        file.buffer,
+        file.filename,
+        {
+          preset: 'IMAGES',
+          folder: `bitacoras/${bitacoraId}`,
+          tags: ['bitacora', `tecnico_${tecnicoId}`, `bitacora_${bitacoraId}`],
+          context: {
+            bitacora_id: bitacoraId,
+            tecnico_id: tecnicoId,
+            subido_por: auth.clientType,
+            orden: String(index + 1)
+          },
+          maxWidth: 1920,
+          maxHeight: 1080
+        }
+      );
 
-        return {
-          url: result.secure_url,
-          public_id: result.public_id,
-          thumbnail: cloudinaryService.getTransformedUrl(result.public_id, {
-            width: 300,
-            height: 300,
-            crop: 'thumb',
-            quality: 'auto'
-          }),
-          original_filename: file.filename,
-          bytes: result.bytes,
-          format: result.format
-        };
-      })
-    );
+      results.push({
+        url: result.secure_url,
+        public_id: result.public_id,
+        thumbnail: cloudinaryService.getTransformedUrl(result.public_id, {
+          width: 300,
+          height: 300,
+          crop: 'thumb',
+          quality: 'auto'
+        }),
+        original_filename: file.filename,
+        bytes: result.bytes,
+        format: result.format
+      });
+    }
 
     return c.json({
       success: true,
@@ -161,25 +161,24 @@ router.post('/documentos',
     const files: FileUpload[] = c.get('files');
     const fields = c.get('fields');
     
-    const results = await Promise.all(
-      files.map(async (file) => {
-        const result = await cloudinaryService.uploadBuffer(
-          file.buffer,
-          file.filename,
-          {
-            preset: 'DOCS',
-            folder: `documentos/${fields.beneficiario_id || 'general'}`
-          }
-        );
+    const results = [];
+    for (const file of files) {
+      const result = await cloudinaryService.uploadBuffer(
+        file.buffer,
+        file.filename,
+        {
+          preset: 'DOCS',
+          folder: `documentos/${fields.beneficiario_id || 'general'}`
+        }
+      );
 
-        return {
-          url: result.secure_url,
-          public_id: result.public_id,
-          original_filename: file.filename,
-          bytes: result.bytes
-        };
-      })
-    );
+      results.push({
+        url: result.secure_url,
+        public_id: result.public_id,
+        original_filename: file.filename,
+        bytes: result.bytes
+      });
+    }
 
     return c.json({
       success: true,
