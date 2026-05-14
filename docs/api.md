@@ -96,6 +96,13 @@ Todos los endpoints de upload usan `Content-Type: multipart/form-data`.
 Reglas generales:
 - Tamaño máximo por archivo: **10 MB**
 - La API recibe archivos individuales o múltiples en un mismo campo
+- Los archivos se procesan **secuencialmente** uno por uno para evitar corrupción
+- Cada imagen se valida contra su firma (magic bytes) antes de subir:
+  - JPEG: `\xFF\xD8\xFF`
+  - PNG: `\x89PNG`
+  - WebP: `RIFF`
+  - HEIC: `ftyp`
+- Si un archivo está vacío o tiene firma inválida, se rechaza con error `400
 
 ### POST `/upload/fotos-campo`
 
@@ -119,7 +126,9 @@ Sube fotos de campo asociadas a una bitácora. **Web y App.**
 - `bitacora_id` y `tecnico_id` obligatorios
 - Máx. 10 archivos para app, 20 para web
 - Tipos permitidos: `image/jpeg`, `image/png`, `image/webp`, `image/heic`
+- Validación de integridad por magic bytes (JPEG, PNG, WebP, HEIC)
 - Se redimensiona a máx. 1920x1080 con calidad automática
+- Las imágenes se suben secuencialmente una por una
 - Carpeta destino: `bitacoras/{bitacora_id}/`
 - Metadatos guardados: `bitacora_id`, `tecnico_id`, `subido_por`, `orden`
 
@@ -436,6 +445,10 @@ curl -X DELETE "https://api.campo.com/upload/bitacoras/123/foto_abc" \
 | `"La firma debe ser PNG o JPEG"` | 400 |
 | `"Tipo no permitido: {mimetype}"` | 400 |
 | `"Archivo {nombre} excede el límite de 10MB"` | 413 |
+| `"Archivo vacío"` | 400 |
+| `"Archivo de imagen corrupto o incompleto"` | 400 |
+| `"Archivo de imagen corrupto o inválido"` | 400 |
+| `"Error procesando archivos"` | 400 |
 | `"Error interno del servidor"` | 500 |
 
 ---
